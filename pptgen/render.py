@@ -99,8 +99,9 @@ class _Builder:
 
     def intro_issue(self, proposal, index):
         total = len(self.deck["proposals"])
+        label = proposal["name"] if total == 1 else f"提案 {index} / {total}"
         slide = self._slide(
-            f"提案 {index} / {total}  ·  问题与特征",
+            f"{label}  ·  问题与特征",
             proposal["problem_title"],
             _proposal_note(proposal, "problem"),
         )
@@ -130,8 +131,9 @@ class _Builder:
 
     def intro_practice(self, proposal, index):
         total = len(self.deck["proposals"])
+        label = proposal["name"] if total == 1 else f"提案 {index} / {total}"
         slide = self._slide(
-            f"提案 {index} / {total}  ·  实施与判断",
+            f"{label}  ·  实施与判断",
             proposal["embodiment_title"],
             _proposal_note(proposal, "embodiment"),
         )

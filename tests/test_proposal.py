@@ -117,6 +117,11 @@ def test_intro_deck_is_two_pages_each(tmp_path):
     assert "轴距" in text
     assert "柔性颈" not in text
     assert "斜孔" not in text
+    single = copy.deepcopy(deck)
+    single["proposals"] = deck["proposals"][:1]
+    single_path = tmp_path / "one-intro.pptx"
+    render_pptx(single, single_path)
+    assert len(Presentation(single_path).slides) == 2
 
 
 def test_one_proposal_still_renders(tmp_path):

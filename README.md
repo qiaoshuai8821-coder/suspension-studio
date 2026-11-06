@@ -33,7 +33,7 @@ python3 -m pptgen examples/e-platform-rear/proposal.yaml --check
 
 真实项目不要改这个示例。复制 YAML，把 `meta.example` 设为 `false`，换上自己的平台边界和结构。字段说明在技能的 `references/schema.md`。只要每则两页介绍时，写 `meta.deck: intro`。
 
-已经按这个短版式生成过一稿：`proposals/two-intro/两则悬架装置提案.pptx`。它仍是提案稿，不是实测车型。
+已经按这个短版式各出一份两页幻灯片：`proposals/two-intro/轮跳末端避开内点衬套.pptx` 和 `proposals/two-intro/轴距共用的机加移位板.pptx`。它们仍是提案稿，不是实测车型。
 
 ## 示例讲什么
 
