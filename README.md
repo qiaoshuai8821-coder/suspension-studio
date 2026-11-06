@@ -31,7 +31,9 @@ python3 -m pptgen examples/e-platform-rear/proposal.yaml --out-dir examples/e-pl
 python3 -m pptgen examples/e-platform-rear/proposal.yaml --check
 ```
 
-真实项目不要改这个示例。复制 YAML，把 `meta.example` 设为 `false`，换上自己的平台边界和结构。字段说明在技能的 `references/schema.md`。
+真实项目不要改这个示例。复制 YAML，把 `meta.example` 设为 `false`，换上自己的平台边界和结构。字段说明在技能的 `references/schema.md`。只要每则两页介绍时，写 `meta.deck: intro`。
+
+已经按这个短版式生成过一稿：`proposals/two-intro/两则悬架装置提案.pptx`。它仍是提案稿，不是实测车型。
 
 ## 示例讲什么
 
@@ -52,3 +54,12 @@ python3 -m pptgen examples/e-platform-rear/proposal.yaml --check
 - 不编试验数据、专利公开号和供应商。
 
 如果实际基线是扭力梁、整体桥或商用车悬架，不要沿用示例的三案，按技能重新写矛盾和必要特征。
+
+## 两则短介绍
+
+`proposals/two-intro/` 是另一份提案稿，每则两页，共四页。它不沿用上面三案的分路支架、车高安装块和斜孔。
+
+1. 缓冲块走完行程后，第二接触才闭合，冲击进入副车架纵梁，不进入电池壳体。
+2. 两种轴距共用一个副车架毛坯和同一组车身安装孔。机加移位板把下内点和弹簧下座一起沿纵向搬走，相对位置不变。
+
+两案都标明检索风险为中。结构可以写成独立权利要求；是不是新的、值不值得申请，要检索之后才知道。

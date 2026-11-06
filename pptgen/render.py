@@ -45,20 +45,25 @@ GAP = 0.12
 def render_pptx(deck: dict, path: str | Path) -> Path:
     output = Path(path)
     builder = _Builder(deck)
-    builder.cover()
-    builder.platform()
-    builder.contradictions()
-    builder.overview()
-    for index, proposal in enumerate(deck["proposals"], start=1):
-        builder.problem(proposal, index)
-        builder.solution(proposal, index)
-        builder.embodiments(proposal, index)
-        builder.effects(proposal, index)
-        builder.patent(proposal, index)
-    builder.family()
-    builder.roadmap()
-    builder.decisions()
-    builder.appendix()
+    if deck["meta"].get("deck") == "intro":
+        for index, proposal in enumerate(deck["proposals"], start=1):
+            builder.intro_issue(proposal, index)
+            builder.intro_practice(proposal, index)
+    else:
+        builder.cover()
+        builder.platform()
+        builder.contradictions()
+        builder.overview()
+        for index, proposal in enumerate(deck["proposals"], start=1):
+            builder.problem(proposal, index)
+            builder.solution(proposal, index)
+            builder.embodiments(proposal, index)
+            builder.effects(proposal, index)
+            builder.patent(proposal, index)
+        builder.family()
+        builder.roadmap()
+        builder.decisions()
+        builder.appendix()
     if builder.page != builder.total:
         raise RuntimeError(f"页数不一致：画了 {builder.page} 页，计划 {builder.total} 页")
     builder.prs.save(output)
@@ -91,6 +96,64 @@ class _Builder:
     def _note(self, key: str) -> str | None:
         notes = self.deck.get("notes") or {}
         return notes.get(key)
+
+    def intro_issue(self, proposal, index):
+        total = len(self.deck["proposals"])
+        slide = self._slide(
+            f"提案 {index} / {total}  ·  问题与特征",
+            proposal["problem_title"],
+            _proposal_note(proposal, "problem"),
+        )
+        left_w = 7.15
+        panel(slide, MARGIN_L, CONTENT_TOP, left_w, CONTENT_H, WHITE, TEAL)
+        add_text(slide, MARGIN_L + 0.2, CONTENT_TOP + 0.14, left_w - 0.4, 0.26, "基线在哪里失败", size=13, color=TEAL, bold=True, spacing=1, after=0)
+        add_text(slide, MARGIN_L + 0.2, CONTENT_TOP + 0.46, left_w - 0.4, 2.15, proposal["baseline_failure"], size=16, spacing=1.12, after=0)
+        add_text(slide, MARGIN_L + 0.2, CONTENT_TOP + 2.75, left_w - 0.4, 0.26, "这两页只讲这一件事", size=13, color=COPPER, bold=True, spacing=1, after=0)
+        add_text(slide, MARGIN_L + 0.2, CONTENT_TOP + 3.08, left_w - 0.4, 2.3, proposal["only_this"], size=16, spacing=1.12, after=0)
+        right_x = MARGIN_L + left_w + GAP
+        right_w = MARGIN_R - right_x
+        features = proposal["essential_features"]
+        list_h = CONTENT_H - 1.15
+        rect(slide, right_x, CONTENT_TOP, right_w, list_h, WHITE)
+        add_text(slide, right_x + 0.14, CONTENT_TOP + 0.1, right_w - 0.28, 0.26, "必要技术特征", size=13, color=TEAL, bold=True, spacing=1, after=0)
+        row_h = (list_h - 0.46) / len(features)
+        for feature_index, feature in enumerate(features):
+            y = CONTENT_TOP + 0.46 + feature_index * row_h
+            rect(slide, right_x + 0.14, y, 0.46, 0.34, COPPER)
+            add_text(slide, right_x + 0.14, y, 0.46, 0.34, feature["id"], size=12, color=WHITE, bold=True, align="center", anchor="middle", spacing=1, after=0)
+            add_text(slide, right_x + 0.7, y - 0.04, right_w - 0.86, row_h, feature["text"], size=14, anchor="middle", spacing=1.05, after=0)
+        risk = proposal["patent"]["retrieval_risk"]
+        risk_y = CONTENT_TOP + list_h + GAP
+        panel(slide, right_x, risk_y, right_w, CONTENT_BOTTOM - risk_y, RISK_FILL[risk], RISK_INK[risk])
+        add_text(slide, right_x + 0.14, risk_y + 0.08, right_w - 0.28, 0.24, f"检索风险  ·  {risk}", size=13, color=RISK_INK[risk], bold=True, spacing=1, after=0)
+        add_text(slide, right_x + 0.14, risk_y + 0.34, right_w - 0.28, CONTENT_BOTTOM - risk_y - 0.42, proposal["patent"]["retrieval_risk_reason"], size=13, spacing=1.02, after=0)
+
+    def intro_practice(self, proposal, index):
+        total = len(self.deck["proposals"])
+        slide = self._slide(
+            f"提案 {index} / {total}  ·  实施与判断",
+            proposal["embodiment_title"],
+            _proposal_note(proposal, "embodiment"),
+        )
+        card_w = (CONTENT_W - GAP) / 2
+        card_h = 2.05
+        for item_index, item in enumerate(proposal["embodiments"]):
+            x = MARGIN_L + item_index * (card_w + GAP)
+            panel(slide, x, CONTENT_TOP, card_w, card_h, WHITE, COPPER if item_index == 0 else TEAL)
+            add_text(slide, x + 0.16, CONTENT_TOP + 0.1, card_w - 0.32, 0.34, item["name"], size=16, color=INK, bold=True, spacing=1, after=0)
+            add_text(slide, x + 0.16, CONTENT_TOP + 0.48, card_w - 0.32, 0.85, item["structure"], size=14, spacing=1.05, after=0)
+            add_text(slide, x + 0.16, CONTENT_TOP + 1.36, card_w - 0.32, 0.6, item["difference"], size=13, color=MUTED, spacing=1.02, after=0)
+        effect = next(item for item in proposal["effects"] if item["rank"] == "必要")
+        mid_y = CONTENT_TOP + card_h + GAP
+        mid_h = 1.7
+        panel(slide, MARGIN_L, mid_y, CONTENT_W, mid_h, WHITE, TEAL)
+        add_text(slide, MARGIN_L + 0.18, mid_y + 0.08, 4, 0.24, "怎么判断做成了", size=13, color=TEAL, bold=True, spacing=1, after=0)
+        add_text(slide, MARGIN_L + 0.18, mid_y + 0.36, CONTENT_W - 0.36, 0.55, effect["setup"], size=14, spacing=1.05, after=0)
+        add_text(slide, MARGIN_L + 0.18, mid_y + 0.96, CONTENT_W - 0.36, 0.62, effect["criterion"], size=14, spacing=1.05, after=0)
+        claim_y = mid_y + mid_h + GAP
+        panel(slide, MARGIN_L, claim_y, CONTENT_W, CONTENT_BOTTOM - claim_y, COPPER_SOFT, COPPER)
+        add_text(slide, MARGIN_L + 0.18, claim_y + 0.08, CONTENT_W - 0.36, 0.24, "独立权利要求要落在这些关系上，非正式文本", size=12, color=COPPER, bold=True, spacing=1, after=0)
+        add_text(slide, MARGIN_L + 0.18, claim_y + 0.34, CONTENT_W - 0.36, CONTENT_BOTTOM - claim_y - 0.42, proposal["patent"]["independent_claim"].strip(), size=13, spacing=1.05, after=0)
 
     def cover(self):
         self.page += 1

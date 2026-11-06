@@ -97,6 +97,9 @@ def validate(data: dict) -> list[str]:
                 errors.append(f"meta.{key} 有 {len(value)} 字，最多 {limit} 字")
         if not isinstance(meta.get("example"), bool):
             errors.append("meta.example 必须是 true 或 false")
+        deck_format = meta.get("deck", "full")
+        if deck_format not in {"full", "intro"}:
+            errors.append("meta.deck 只能是 full 或 intro")
         stem = _need_str(meta, "file_stem", "meta", errors)
         if stem and ("/" in stem or "\\" in stem or stem.startswith(".")):
             errors.append("meta.file_stem 只能是文件名，不能包含路径")
@@ -248,6 +251,8 @@ def lint_proposal(data: dict) -> list[str]:
 
 
 def planned_slide_count(data: dict) -> int:
+    if data.get("meta", {}).get("deck") == "intro":
+        return 2 * len(data["proposals"])
     return 4 + 5 * len(data["proposals"]) + 4
 
 

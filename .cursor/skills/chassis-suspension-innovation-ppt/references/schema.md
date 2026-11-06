@@ -33,7 +33,7 @@ python -m pptgen <提案.yaml> --out-dir <目录>
 | dropped | 列表。没有放弃的方向就写空列表 |
 | confidentiality | 文件性质，以及申请日前不要外发什么 |
 
-`meta.example: true` 时封面和页脚带示例。真实项目用 false。`date` 写成 `"YYYY-MM-DD"`。`file_stem` 只是文件名。
+`meta.example: true` 时封面和页脚带示例。真实项目用 false。`date` 写成 `"YYYY-MM-DD"`。`file_stem` 只是文件名。`meta.deck` 可选：不写或 `full` 是完整评审稿；`intro` 是每则提案两页介绍，页数等于提案数乘二。
 
 名称尽量短：平台名、模块、短名都不超过 16 字，结论式标题尽量一行。
 

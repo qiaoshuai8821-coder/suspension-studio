@@ -97,6 +97,27 @@ def test_example_flag_changes_footer_only():
     assert "非正式专利法律意见" in footer_text(plain)
 
 
+def test_intro_deck_is_two_pages_each(tmp_path):
+    deck = load_proposal(Path("proposals/two-intro/proposal.yaml"))
+    assert deck["meta"]["deck"] == "intro"
+    assert planned_slide_count(deck) == 4
+    assert lint_proposal(deck) == []
+    path = tmp_path / "intro.pptx"
+    render_pptx(deck, path)
+    presentation = Presentation(path)
+    assert len(presentation.slides) == 4
+    text = "\n".join(
+        shape.text_frame.text
+        for slide in presentation.slides
+        for shape in slide.shapes
+        if shape.has_text_frame
+    )
+    assert "轮跳第二路径避开电池包" not in text or "电池" in text
+    assert "轴距" in text
+    assert "柔性颈" not in text
+    assert "斜孔" not in text
+
+
 def test_one_proposal_still_renders(tmp_path):
     deck = load_proposal(EXAMPLE)
     deck["proposals"] = deck["proposals"][:1]
