@@ -112,7 +112,8 @@ def test_intro_deck_is_two_pages_each(tmp_path):
         for shape in slide.shapes
         if shape.has_text_frame
     )
-    assert "轮跳第二路径避开电池包" not in text or "电池" in text
+    assert "电池" not in text
+    assert "内点衬套" in text
     assert "轴距" in text
     assert "柔性颈" not in text
     assert "斜孔" not in text
