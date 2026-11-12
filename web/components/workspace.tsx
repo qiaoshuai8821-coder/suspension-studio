@@ -91,10 +91,10 @@ export function Workspace() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] pb-28 sm:gap-6 lg:pb-8">
       <header className="border-b border-border pb-5">
         <p className="text-sm font-medium text-primary">乘用车悬架平台</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">悬架创新工作台</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">悬架创新工作台</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           打开就能用。想法记在这台浏览器里，换一台电脑不会跟着走。把项目下载到自己电脑上，按说明启动，也是这一套。只写悬架零件。出来的是讨论稿，还没做过检索。
         </p>
@@ -107,7 +107,7 @@ export function Workspace() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card id="ideas" className="scroll-mt-4">
           <CardHeader>
             <CardTitle>记下想法</CardTitle>
             <CardDescription>写清是前悬还是后悬、现在卡在哪、零件之间怎么连。下面的示例可以先收下再改。</CardDescription>
@@ -120,10 +120,10 @@ export function Workspace() {
                 saveIdea({ title, axle, baseline, body });
               }}
             >
-              <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="title">标题</Label>
-                  <Input id="title" value={title} maxLength={40} onChange={(event) => setTitle(event.target.value)} placeholder="例如：轮跳末端的第二接触" />
+                  <Input id="title" value={title} maxLength={40} onChange={(event) => setTitle(event.target.value)} placeholder="例如：轮跳末端的第二接触" className="h-11 text-base" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="axle">部位</Label>
@@ -131,7 +131,7 @@ export function Workspace() {
                     id="axle"
                     value={axle}
                     onChange={(event) => setAxle(event.target.value)}
-                    className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
+                    className="h-11 w-full rounded-lg border border-input bg-transparent px-2 text-base"
                   >
                     <option>前悬架</option>
                     <option>后悬架</option>
@@ -141,13 +141,13 @@ export function Workspace() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="baseline">现在卡在哪</Label>
-                <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现有结构里，哪一处同时干了两件互相打架的事" />
+                <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现有结构里，哪一处同时干了两件互相打架的事" className="min-h-24 text-base" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="body">结构关系</Label>
-                <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="谁和谁连着；平时什么样；到了那个工况，力走到哪；哪组孔不动" className="min-h-28" />
+                <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="谁和谁连着；平时什么样；到了那个工况，力走到哪；哪组孔不动" className="min-h-28 text-base" />
               </div>
-              <Button type="submit" disabled={busy !== null} className="h-10 self-start px-4">
+              <Button type="submit" disabled={busy !== null} className="h-11 w-full px-4 text-base sm:w-auto">
                 记下来
               </Button>
             </form>
@@ -159,24 +159,22 @@ export function Workspace() {
               ) : (
                 ideas.map((idea) => (
                   <article key={idea.id} className="rounded-lg border border-border px-3 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="font-medium">{idea.title}</h2>
-                        <p className="text-xs text-muted-foreground">
-                          {idea.axle} · {formatWhen(idea.createdAt)}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-wrap justify-end gap-2">
-                        <Button type="button" variant="secondary" onClick={() => useIdea(idea)}>
-                          放到右边
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => void generate(compose(idea))} disabled={busy !== null}>
-                          生成幻灯片
-                        </Button>
-                        <Button type="button" variant="ghost" onClick={() => setIdeas((current) => current.filter((item) => item.id !== idea.id))}>
-                          删除
-                        </Button>
-                      </div>
+                    <div className="min-w-0">
+                      <h2 className="break-words font-medium">{idea.title}</h2>
+                      <p className="text-xs text-muted-foreground">
+                        {idea.axle} · {formatWhen(idea.createdAt)}
+                      </p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <Button type="button" variant="secondary" className="h-11 px-1 text-sm" onClick={() => useIdea(idea)}>
+                        填入
+                      </Button>
+                      <Button type="button" variant="outline" className="h-11 px-1 text-sm" onClick={() => void generate(compose(idea))} disabled={busy !== null}>
+                        生成
+                      </Button>
+                      <Button type="button" variant="ghost" className="h-11 px-1 text-sm" onClick={() => setIdeas((current) => current.filter((item) => item.id !== idea.id))}>
+                        删除
+                      </Button>
                     </div>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{idea.body}</p>
                   </article>
@@ -187,12 +185,12 @@ export function Workspace() {
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">示例，点一下就能记下来</p>
               {sampleIdeas.map((idea) => (
-                <div key={idea.title} className="flex items-center justify-between gap-3 rounded-lg bg-accent px-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium">{idea.title}</p>
+                <div key={idea.title} className="flex flex-col gap-2 rounded-lg bg-accent px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-medium">{idea.title}</p>
                     <p className="text-xs text-muted-foreground">{idea.axle}</p>
                   </div>
-                  <Button type="button" variant="outline" disabled={busy !== null} onClick={() => saveIdea(idea)}>
+                  <Button type="button" variant="outline" className="h-11 w-full sm:w-auto" disabled={busy !== null} onClick={() => saveIdea(idea)}>
                     记下
                   </Button>
                 </div>
@@ -201,7 +199,7 @@ export function Workspace() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="slides" className="scroll-mt-4">
           <CardHeader>
             <CardTitle>写成两页</CardTitle>
             <CardDescription>至少写三句：零件怎么连，力或者位移怎么走。写完就能下载。</CardDescription>
@@ -209,19 +207,19 @@ export function Workspace() {
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-wrap gap-2">
               {promptStarters.map((starter) => (
-                <Button key={starter.slice(0, 12)} type="button" variant="outline" onClick={() => setPrompt(starter)}>
-                  {starter.slice(0, 16)}…
+                <Button key={starter.slice(0, 12)} type="button" variant="outline" className="h-auto min-h-11 whitespace-normal px-3 py-2 text-left text-sm" onClick={() => setPrompt(starter)}>
+                  {starter.slice(0, 18)}…
                 </Button>
               ))}
             </div>
-            <Textarea value={prompt} maxLength={1500} onChange={(event) => setPrompt(event.target.value)} className="min-h-40" />
-            <Button type="button" className="h-10 self-start px-4" disabled={busy !== null} onClick={() => void generate(prompt)}>
+            <Textarea value={prompt} maxLength={1500} onChange={(event) => setPrompt(event.target.value)} className="min-h-36 text-base sm:min-h-40" />
+            <Button type="button" className="h-11 w-full px-4 text-base sm:w-auto" disabled={busy !== null} onClick={() => void generate(prompt)}>
               {busy === "generate" ? "正在写这两页…" : "生成两页幻灯片"}
             </Button>
 
             {latest ? (
               <div className="rounded-lg border border-primary/30 bg-accent px-3 py-3">
-                <p className="font-medium">{latest.title}</p>
+                <p className="break-words font-medium">{latest.title}</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
                   {latest.features.map((feature) => (
                     <li key={feature.id}>
@@ -230,7 +228,7 @@ export function Workspace() {
                   ))}
                 </ul>
                 <p className="mt-3 text-sm leading-6">这些方案具备写成独立权利要求的结构关系。是不是新的、值不值得申请，要检索之后才知道。</p>
-                <Button type="button" className="mt-3 h-10 px-4" onClick={() => downloadPptx(latest.pptxBase64, latest.title)}>
+                <Button type="button" className="mt-3 h-11 w-full px-4 text-base sm:w-auto" onClick={() => downloadPptx(latest.pptxBase64, latest.title)}>
                   下载幻灯片
                 </Button>
               </div>
@@ -248,9 +246,9 @@ export function Workspace() {
                     key={deck.id}
                     type="button"
                     onClick={() => downloadPptx(deck.pptxBase64, deck.title)}
-                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted"
+                    className="flex min-h-11 w-full flex-col items-start gap-1 rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <span>{deck.title}</span>
+                    <span className="break-words">{deck.title}</span>
                     <span className="text-xs text-muted-foreground">{formatWhen(deck.createdAt)}</span>
                   </button>
                 ))
@@ -259,6 +257,16 @@ export function Workspace() {
           </CardContent>
         </Card>
       </div>
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2">
+          <Button type="button" variant="secondary" className="h-11" onClick={() => document.getElementById("ideas")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            记下想法
+          </Button>
+          <Button type="button" className="h-11" onClick={() => document.getElementById("slides")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            写成两页
+          </Button>
+        </div>
+      </nav>
     </div>
   );
 }
