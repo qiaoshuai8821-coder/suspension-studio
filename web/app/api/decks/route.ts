@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return Response.json({ error: "请求格式不对。" }, { status: 400, headers });
+    return Response.json({ error: "这次提交的格式不对。" }, { status: 400, headers });
   }
   const prompt = typeof payload.prompt === "string" ? payload.prompt.trim() : "";
   const drafted = draftFromPrompt(prompt);
@@ -37,14 +37,14 @@ export async function POST(request: Request) {
   let innovationId: string | null = null;
   if (typeof payload.innovationId === "string" && payload.innovationId !== "") {
     if (!isId(payload.innovationId)) {
-      return Response.json({ error: "找不到对应的收集。" }, { status: 404, headers });
+      return Response.json({ error: "找不到对应的记录。" }, { status: 404, headers });
     }
     const owned = await sql(
       identity.stage,
       "select id from innovations where id = $1 and owner_sub = $2",
       [payload.innovationId, identity.sub],
     );
-    if (owned.length === 0) return Response.json({ error: "找不到对应的收集。" }, { status: 404, headers });
+    if (owned.length === 0) return Response.json({ error: "找不到对应的记录。" }, { status: 404, headers });
     innovationId = payload.innovationId;
   }
 

@@ -19,7 +19,7 @@ export async function renderDraft(draft: Draft): Promise<Buffer> {
   pptx.layout = "WIDE";
   pptx.author = "悬架创新工作台";
   pptx.title = draft.title;
-  pptx.subject = "内部评审草案，未做检索";
+  pptx.subject = "内部讨论稿，还没检索";
 
   issueSlide(pptx, draft);
   practiceSlide(pptx, draft);
@@ -31,15 +31,15 @@ export async function renderDraft(draft: Draft): Promise<Buffer> {
 function issueSlide(pptx: PptxGenJS, draft: Draft) {
   const slide = pptx.addSlide();
   slide.background = { color: paper };
-  chrome(slide, `${draft.axle}  ·  问题与特征`, draft.problemTitle, draft.title, 1);
+  chrome(slide, `${draft.axle}  ·  问题和结构`, draft.problemTitle, draft.title, 1);
   card(slide, 0.48, 1.22, 7.15, 5.55);
-  text(slide, 0.68, 1.38, 6.75, 0.32, "基线在哪里失败", { size: 13, color: teal, bold: true });
+  text(slide, 0.68, 1.38, 6.75, 0.32, "现在卡在哪", { size: 13, color: teal, bold: true });
   text(slide, 0.68, 1.74, 6.75, 1.7, draft.baseline, { size: 16 });
-  text(slide, 0.68, 3.6, 6.75, 0.32, "这两页只讲这一件事", { size: 13, color: copper, bold: true });
+  text(slide, 0.68, 3.6, 6.75, 0.32, "这两页只讲这件事", { size: 13, color: copper, bold: true });
   text(slide, 0.68, 3.96, 6.75, 1.5, draft.onlyThis, { size: 16 });
 
   card(slide, 7.75, 1.22, 5.1, 4.15);
-  text(slide, 7.92, 1.34, 4.76, 0.3, "必要技术特征", { size: 13, color: teal, bold: true });
+  text(slide, 7.92, 1.34, 4.76, 0.3, "必须保住的结构", { size: 13, color: teal, bold: true });
   draft.features.forEach((feature, index) => {
     const y = 1.76 + index * 0.86;
     slide.addShape("roundRect", {
@@ -69,7 +69,7 @@ function issueSlide(pptx: PptxGenJS, draft: Draft) {
 function practiceSlide(pptx: PptxGenJS, draft: Draft) {
   const slide = pptx.addSlide();
   slide.background = { color: paper };
-  chrome(slide, `${draft.axle}  ·  实施与判断`, "两种结构，用来对照同一组关系", draft.title, 2);
+  chrome(slide, `${draft.axle}  ·  怎么做、怎么判断`, "两种做法，对照的是同一组关系", draft.title, 2);
   draft.embodiments.forEach((item, index) => {
     const x = 0.48 + index * 6.4;
     card(slide, x, 1.22, 6.22, 2.05);
@@ -85,7 +85,7 @@ function practiceSlide(pptx: PptxGenJS, draft: Draft) {
     fill: { color: white },
     line: { color: teal, width: 1.25 },
   });
-  text(slide, 0.68, 3.5, 12, 0.28, "怎么判断做成了", { size: 13, color: teal, bold: true });
+  text(slide, 0.68, 3.5, 12, 0.28, "怎样算做成了", { size: 13, color: teal, bold: true });
   text(slide, 0.68, 3.82, 12, 0.4, draft.setup, { size: 14 });
   text(slide, 0.68, 4.24, 12, 0.46, draft.criterion, { size: 14 });
   slide.addShape("rect", {
@@ -96,7 +96,7 @@ function practiceSlide(pptx: PptxGenJS, draft: Draft) {
     fill: { color: copperSoft },
     line: { color: copper, width: 1.25 },
   });
-  text(slide, 0.68, 5.08, 12, 0.28, "独立权利要求要落在这些关系上，非正式文本", { size: 13, color: copper, bold: true });
+  text(slide, 0.68, 5.08, 12, 0.28, "权利要求先落在这些关系上，这还不是正式文本", { size: 13, color: copper, bold: true });
   text(slide, 0.68, 5.4, 12, 1.2, draft.claim, { size: 13 });
 }
 
@@ -106,7 +106,7 @@ function chrome(slide: PptxGenJS.Slide, kicker: string, title: string, shortName
   text(slide, 0.48, 0.44, 12.3, 0.62, title, { size: 26, bold: true });
   slide.addShape("rect", { x: 0.48, y: 7.12, w: 12.37, h: 0.01, fill: { color: line }, line: { color: line } });
   const name = shortName.length > 12 ? `${shortName.slice(0, 11)}…` : shortName;
-  text(slide, 0.48, 7.18, 9.8, 0.26, `${name}  ·  内部评审  ·  非正式专利法律意见，未做检索  ·  演示`, {
+  text(slide, 0.48, 7.18, 9.8, 0.26, `${name}  ·  内部讨论稿  ·  还没检索`, {
     size: 11,
     color: muted,
   });

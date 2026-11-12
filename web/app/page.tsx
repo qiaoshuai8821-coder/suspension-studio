@@ -8,7 +8,7 @@ import { listDecks, listIdeas, stamp } from "../lib/records";
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<p className="px-6 py-8 text-sm text-muted-foreground">正在确认身份…</p>}>
+    <Suspense fallback={<p className="px-6 py-8 text-sm text-muted-foreground">正在确认是谁在看…</p>}>
       <Home />
     </Suspense>
   );
@@ -21,9 +21,9 @@ async function Home() {
     return (
       <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center gap-3 px-6 py-16">
         <p className="text-sm font-medium text-primary">悬架创新工作台</p>
-        <h1 className="text-3xl font-semibold">需要登录后才能收集和生成</h1>
+        <h1 className="text-3xl font-semibold">登录之后才能记想法、出幻灯片</h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          打开已发布的工作台时，由 Cursor 账号完成登录。本地演示把身份关掉后，会停在这一页。这里没有另外一套账号密码。
+          团队成员用自己的 Cursor 账号打开即可。这里不另设用户名和密码。
         </p>
       </main>
     );
@@ -57,7 +57,7 @@ async function Home() {
       createdAt: stamp(row.created_at),
     }));
   } catch {
-    loadError = "收集列表暂时打不开。刷新一次；如果仍打不开，先不要重复提交。";
+    loadError = "列表暂时打不开，刷新一次再试。";
   }
 
   return (

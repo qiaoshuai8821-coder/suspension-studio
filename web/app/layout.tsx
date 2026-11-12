@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "悬架创新工作台",
-  description: "登录后收集乘用车悬架平台的结构创新，并按提示词生成两页介绍。",
+  description: "登录后记下乘用车悬架的结构想法，并写成两页介绍。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

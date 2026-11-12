@@ -32,27 +32,27 @@ const structureWords = ["衬套", "控制臂", "副车架", "弹簧", "缓冲", 
 export function draftFromPrompt(prompt: string): { ok: true; draft: Draft } | { ok: false; error: string } {
   const text = prompt.replace(/\s+/g, " ").trim();
   if (text.length < 12) {
-    return { ok: false, error: "再写具体一点：谁和谁连接，力或位移从哪走到哪。" };
+    return { ok: false, error: "再写具体些：谁和谁连，力或者位移从哪走到哪。" };
   }
   if (text.length > 1500) {
-    return { ok: false, error: "提示词请收在一千五百字以内。" };
+    return { ok: false, error: "太长了，请收在一千五百字以内。" };
   }
   if (text.includes("电池")) {
-    return { ok: false, error: "电池不在悬架权限内。请只写悬架零件之间的关系。" };
+    return { ok: false, error: "电池不归我们改。请只写悬架零件之间怎么传力。" };
   }
   const hit = banned.find((phrase) => text.includes(phrase));
   if (hit) {
-    return { ok: false, error: `把「${hit}」换成具体的零件关系后再生成。` };
+    return { ok: false, error: `先把「${hit}」换成具体的零件关系，再生成。` };
   }
   if (!structureWords.some((word) => text.includes(word))) {
-    return { ok: false, error: "提示里还没有零件关系。写清控制臂、衬套、副车架、弹簧或安装孔里的至少一处。" };
+    return { ok: false, error: "还没写到零件。控制臂、衬套、副车架、弹簧、安装孔，至少点出一个。" };
   }
 
   const labeled = readLabeled(text);
   const structure = labeled.structure || text;
   const pieces = splitPieces(structure);
   if (pieces.length < 3) {
-    return { ok: false, error: "再补两句结构：正常工况怎样，工况成立后力或位移走到哪，哪一组孔或毛坯保持不动。" };
+    return { ok: false, error: "再补两句：平时什么样，到了那个工况力走到哪，哪组孔或毛坯不动。" };
   }
 
   const features = pieces.slice(0, 4).map((piece, index) => ({
@@ -62,7 +62,7 @@ export function draftFromPrompt(prompt: string): { ok: true; draft: Draft } | { 
   const axle = text.includes("前悬") ? "前悬架" : "后悬架";
   const title = clip(labeled.title || features[0].text, 22);
   const problemTitle = clip(labeled.title || features[0].text, 28);
-  const baseline = labeled.baseline || "基线没有把这段关系规定成结构。这一页按提示整理，不是实测结论。";
+  const baseline = labeled.baseline || "现有结构还没把这段关系定下来。这一页按你的描述整理，不是实测结论。";
   const embodiments = twoEmbodiments(structure, features.map((feature) => feature.text).join(""));
 
   return {
@@ -72,13 +72,13 @@ export function draftFromPrompt(prompt: string): { ok: true; draft: Draft } | { 
       axle,
       problemTitle,
       baseline: clip(baseline, 120),
-      onlyThis: "这两页只整理提示里写下的结构关系。不解决提示里没有写到的接口。",
+      onlyThis: "这两页只写你提到的结构。你没写到的接口，这里不展开。",
       features,
       embodiments,
-      setup: "按提示里的工况装出结构，测量点名的部位。",
-      criterion: "两种状态的差别和提示里写的关系一致。没有做过的限值保持待测。",
+      setup: "按你写的工况把零件装出来，量你提到的部位。",
+      criterion: "两种状态的差别，要和你写的关系一致。没做过试验的限值先空着。",
       claim: buildClaim(axle, features.map((feature) => feature.text)),
-      riskReason: "未做检索。草案只保留提示里的结构关系，不判断是不是新的，也不判断值不值得申请。",
+      riskReason: "还没检索。这里只保留你写的结构，不判断新不新，也不判断值不值得申请。",
     },
   };
 }
@@ -113,27 +113,27 @@ function twoEmbodiments(structure: string, joined: string): Draft["embodiments"]
   if (split.length >= 2) {
     return [
       {
-        name: "第一种结构",
+        name: "第一种做法",
         structure: clip(split[0], 90),
-        difference: "相对第二种结构，连接关系按前半段提示直接实现。",
+        difference: "相对第二种做法，连接按你前半段写的来。",
       },
       {
-        name: "第二种结构",
+        name: "第二种做法",
         structure: clip(split[1], 90),
-        difference: "相对第一种结构，差别落在后半段提示写出的零件上。",
+        difference: "相对第一种做法，差别在你后半段写的零件上。",
       },
     ];
   }
   return [
     {
-      name: "按提示的结构",
+      name: "按你写的结构",
       structure: clip(joined, 90),
-      difference: "相对可更换件方案，关系直接做在提示点名的零件上。",
+      difference: "相对可更换件，关系直接做在你写到的零件上。",
     },
     {
       name: "可更换件",
-      structure: "同一关系做在可更换件上，副车架毛坯和车身安装孔保持不动。",
-      difference: "相对把关系做死在毛坯上，车型差别收在可更换件上。",
+      structure: "同一套关系做在可更换件上，副车架毛坯和车身安装孔不动。",
+      difference: "相对直接改毛坯，车型之间的差别放在可更换件上。",
     },
   ];
 }

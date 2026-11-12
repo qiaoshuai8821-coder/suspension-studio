@@ -8,12 +8,12 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const identity = await requireIdentity(request);
   if (identity instanceof Response) return identity;
   const { id } = await context.params;
-  if (!isId(id)) return Response.json({ error: "找不到这条收集。" }, { status: 404, headers });
+  if (!isId(id)) return Response.json({ error: "找不到这条记录。" }, { status: 404, headers });
   const rows = await sql(
     identity.stage,
     "delete from innovations where id = $1 and owner_sub = $2 returning id",
     [id, identity.sub],
   );
-  if (rows.length === 0) return Response.json({ error: "找不到这条收集。" }, { status: 404, headers });
+  if (rows.length === 0) return Response.json({ error: "找不到这条记录。" }, { status: 404, headers });
   return new Response(null, { status: 204, headers });
 }

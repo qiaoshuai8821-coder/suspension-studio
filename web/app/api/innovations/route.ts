@@ -32,10 +32,10 @@ export async function POST(request: Request) {
   const baseline = text(body.baseline, 300);
   const note = text(body.body, 800);
   if (!title || !baseline || !note || !axles.has(axle)) {
-    return Response.json({ error: "标题、桥、基线和结构都要填写。" }, { status: 400, headers });
+    return Response.json({ error: "标题、部位、现状和结构都要填。" }, { status: 400, headers });
   }
   if (note.includes("电池") || baseline.includes("电池")) {
-    return Response.json({ error: "电池不在悬架权限内。收集时只写悬架零件。" }, { status: 400, headers });
+    return Response.json({ error: "电池不归我们改。请只写悬架零件。" }, { status: 400, headers });
   }
   const id = crypto.randomUUID();
   await sql(
@@ -50,11 +50,11 @@ async function readJson(request: Request): Promise<Record<string, unknown> | Res
   try {
     const value = await request.json();
     if (!value || typeof value !== "object") {
-      return Response.json({ error: "请求格式不对。" }, { status: 400, headers });
+      return Response.json({ error: "这次提交的格式不对。" }, { status: 400, headers });
     }
     return value as Record<string, unknown>;
   } catch {
-    return Response.json({ error: "请求格式不对。" }, { status: 400, headers });
+    return Response.json({ error: "这次提交的格式不对。" }, { status: 400, headers });
   }
 }
 
