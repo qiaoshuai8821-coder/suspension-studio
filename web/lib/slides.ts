@@ -13,7 +13,7 @@ const muted = "5C6570";
 const tealSoft = "E7EFF1";
 const copperSoft = "F8EFE8";
 
-export async function renderDraft(draft: Draft): Promise<Buffer> {
+export async function renderDraft(draft: Draft): Promise<Uint8Array> {
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "WIDE", width: 13.333, height: 7.5 });
   pptx.layout = "WIDE";
@@ -24,8 +24,8 @@ export async function renderDraft(draft: Draft): Promise<Buffer> {
   issueSlide(pptx, draft);
   practiceSlide(pptx, draft);
 
-  const output = await pptx.write({ outputType: "nodebuffer" });
-  return Buffer.from(output as ArrayBuffer);
+  const output = await pptx.write({ outputType: "arraybuffer" });
+  return new Uint8Array(output as ArrayBuffer);
 }
 
 function issueSlide(pptx: PptxGenJS, draft: Draft) {

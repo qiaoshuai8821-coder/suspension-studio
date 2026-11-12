@@ -1,49 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { draftFromPrompt } from "@/lib/draft";
+import { checkIdea, type Idea } from "@/lib/ideas";
+import { bytesToBase64, downloadPptx, readStore, writeStore, type StoredDeck } from "@/lib/local-store";
 import { promptStarters, sampleIdeas, type SampleIdea } from "@/lib/samples";
-
-export type Idea = {
-  id: string;
-  title: string;
-  axle: string;
-  baseline: string;
-  body: string;
-  createdAt: string;
-};
-
-export type DeckItem = {
-  id: string;
-  title: string;
-  prompt: string;
-  createdAt: string;
-};
-
-export type ViewerCard = {
-  label: string;
-  simulated: boolean;
-  kind: "person" | "key";
-};
 
 type Feature = { id: string; text: string };
 
-export function Workspace({
-  viewer,
-  initialIdeas,
-  initialDecks,
-}: {
-  viewer: ViewerCard;
-  initialIdeas: Idea[];
-  initialDecks: DeckItem[];
-}) {
-  const [ideas, setIdeas] = useState(initialIdeas);
-  const [decks, setDecks] = useState(initialDecks);
+export function Workspace() {
+  const [ready, setReady] = useState(false);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [decks, setDecks] = useState<StoredDeck[]>([]);
   const [title, setTitle] = useState("");
   const [axle, setAxle] = useState("后悬架");
   const [baseline, setBaseline] = useState("");
@@ -51,81 +25,79 @@ export function Workspace({
   const [prompt, setPrompt] = useState(promptStarters[0]);
   const [busy, setBusy] = useState<"save" | "generate" | null>(null);
   const [error, setError] = useState("");
-  const [latest, setLatest] = useState<{ id: string; title: string; features: Feature[] } | null>(null);
+  const [latest, setLatest] = useState<{ id: string; title: string; features: Feature[]; pptxBase64: string } | null>(null);
 
-  async function reload() {
-    const [ideaResponse, deckResponse] = await Promise.all([fetch("/api/innovations"), fetch("/api/decks")]);
-    if (ideaResponse.ok) setIdeas(await ideaResponse.json());
-    if (deckResponse.ok) setDecks(await deckResponse.json());
-  }
+  useEffect(() => {
+    const saved = readStore();
+    setIdeas(saved.ideas);
+    setDecks(saved.decks);
+    setReady(true);
+  }, []);
 
-  async function saveIdea(idea: { title: string; axle: string; baseline: string; body: string }) {
-    setBusy("save");
+  useEffect(() => {
+    if (!ready) return;
+    writeStore(ideas, decks);
+  }, [ready, ideas, decks]);
+
+  function saveIdea(idea: { title: string; axle: string; baseline: string; body: string }) {
     setError("");
-    const response = await fetch("/api/innovations", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(idea),
-    });
-    const payload = await response.json().catch(() => ({}));
-    setBusy(null);
-    if (!response.ok) {
-      setError(payload.error || "没保存上。");
+    const problem = checkIdea(idea);
+    if (problem) {
+      setError(problem);
       return;
     }
+    const next: Idea = {
+      id: crypto.randomUUID(),
+      title: idea.title.replace(/\s+/g, " ").trim(),
+      axle: idea.axle,
+      baseline: idea.baseline.replace(/\s+/g, " ").trim(),
+      body: idea.body.replace(/\s+/g, " ").trim(),
+      createdAt: new Date().toISOString(),
+    };
+    setIdeas((current) => [next, ...current].slice(0, 30));
     setTitle("");
     setBaseline("");
     setBody("");
-    await reload();
   }
 
-  async function removeIdea(id: string) {
-    setError("");
-    const response = await fetch(`/api/innovations/${id}`, { method: "DELETE" });
-    if (!response.ok && response.status !== 204) {
-      const payload = await response.json().catch(() => ({}));
-      setError(payload.error || "没删掉。");
-      return;
-    }
-    setIdeas((current) => current.filter((idea) => idea.id !== id));
-  }
-
-  async function generate(nextPrompt: string, innovationId?: string) {
+  async function generate(nextPrompt: string) {
     setBusy("generate");
     setError("");
     setLatest(null);
-    const response = await fetch("/api/decks", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt: nextPrompt, innovationId }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    setBusy(null);
-    if (!response.ok) {
-      setError(payload.error || "没生成出来。");
+    const drafted = draftFromPrompt(nextPrompt);
+    if (!drafted.ok) {
+      setBusy(null);
+      setError(drafted.error);
       return;
     }
-    setLatest({ id: payload.id, title: payload.title, features: payload.features });
-    await reload();
+    const { renderDraft } = await import("@/lib/slides");
+    const bytes = await renderDraft(drafted.draft);
+    const pptxBase64 = bytesToBase64(bytes);
+    const deck: StoredDeck = {
+      id: crypto.randomUUID(),
+      title: drafted.draft.title,
+      prompt: nextPrompt.slice(0, 1500),
+      createdAt: new Date().toISOString(),
+      pptxBase64,
+    };
+    setDecks((current) => [deck, ...current].slice(0, 12));
+    setLatest({ id: deck.id, title: deck.title, features: drafted.draft.features, pptxBase64 });
+    setBusy(null);
   }
 
   function useIdea(idea: Idea | SampleIdea) {
-    const next = `标题：${idea.title}\n桥：${idea.axle}\n基线：${idea.baseline}\n结构：${idea.body}`;
-    setPrompt(next);
+    setPrompt(`标题：${idea.title}\n桥：${idea.axle}\n基线：${idea.baseline}\n结构：${idea.body}`);
     setError("");
   }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-6">
-      <header className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-sm font-medium text-primary">乘用车悬架平台</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">悬架创新工作台</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            先把想法记下来，再写成两页介绍。只写悬架零件。出来的是讨论稿，还没做过检索。
-          </p>
-        </div>
-        <ViewerBadge viewer={viewer} />
+      <header className="border-b border-border pb-5">
+        <p className="text-sm font-medium text-primary">乘用车悬架平台</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">悬架创新工作台</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+          打开就能用。想法记在这台浏览器里，换一台电脑不会跟着走。把项目下载到自己电脑上，按说明启动，也是这一套。只写悬架零件。出来的是讨论稿，还没做过检索。
+        </p>
       </header>
 
       {error ? (
@@ -145,7 +117,7 @@ export function Workspace({
               className="flex flex-col gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                void saveIdea({ title, axle, baseline, body });
+                saveIdea({ title, axle, baseline, body });
               }}
             >
               <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
@@ -168,7 +140,7 @@ export function Workspace({
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="baseline">现在卡在哪</Label>
+                <Label htmlFor="baseline">现在卡在哪</Label>
                 <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现有结构里，哪一处同时干了两件互相打架的事" />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -176,7 +148,7 @@ export function Workspace({
                 <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="谁和谁连着；平时什么样；到了那个工况，力走到哪；哪组孔不动" className="min-h-28" />
               </div>
               <Button type="submit" disabled={busy !== null} className="h-10 self-start px-4">
-                {busy === "save" ? "正在保存…" : "记下来"}
+                记下来
               </Button>
             </form>
 
@@ -198,17 +170,10 @@ export function Workspace({
                         <Button type="button" variant="secondary" onClick={() => useIdea(idea)}>
                           放到右边
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            void generate(compose(idea), idea.id);
-                          }}
-                          disabled={busy !== null}
-                        >
+                        <Button type="button" variant="outline" onClick={() => void generate(compose(idea))} disabled={busy !== null}>
                           生成幻灯片
                         </Button>
-                        <Button type="button" variant="ghost" onClick={() => void removeIdea(idea.id)}>
+                        <Button type="button" variant="ghost" onClick={() => setIdeas((current) => current.filter((item) => item.id !== idea.id))}>
                           删除
                         </Button>
                       </div>
@@ -227,7 +192,7 @@ export function Workspace({
                     <p className="text-sm font-medium">{idea.title}</p>
                     <p className="text-xs text-muted-foreground">{idea.axle}</p>
                   </div>
-                  <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void saveIdea(idea)}>
+                  <Button type="button" variant="outline" disabled={busy !== null} onClick={() => saveIdea(idea)}>
                     记下
                   </Button>
                 </div>
@@ -265,8 +230,8 @@ export function Workspace({
                   ))}
                 </ul>
                 <p className="mt-3 text-sm leading-6">这些方案具备写成独立权利要求的结构关系。是不是新的、值不值得申请，要检索之后才知道。</p>
-                <Button asChild className="mt-3 h-10 px-4">
-                  <a href={`/api/decks/${latest.id}`}>下载幻灯片</a>
+                <Button type="button" className="mt-3 h-10 px-4" onClick={() => downloadPptx(latest.pptxBase64, latest.title)}>
+                  下载幻灯片
                 </Button>
               </div>
             ) : (
@@ -276,34 +241,24 @@ export function Workspace({
             <div className="flex flex-col gap-2">
               <p className="text-sm font-medium">已经生成的</p>
               {decks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">生成过的两页会留在这个账号下，刷新也还在。</p>
+                <p className="text-sm text-muted-foreground">生成过的两页留在这台浏览器里，刷新也还在。</p>
               ) : (
                 decks.map((deck) => (
-                  <a key={deck.id} href={`/api/decks/${deck.id}`} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">
+                  <button
+                    key={deck.id}
+                    type="button"
+                    onClick={() => downloadPptx(deck.pptxBase64, deck.title)}
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted"
+                  >
                     <span>{deck.title}</span>
                     <span className="text-xs text-muted-foreground">{formatWhen(deck.createdAt)}</span>
-                  </a>
+                  </button>
                 ))
               )}
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function ViewerBadge({ viewer }: { viewer: ViewerCard }) {
-  return (
-    <div className="rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-foreground/10">
-      <p className="font-medium">{viewer.label}</p>
-      <p className="text-xs leading-5 text-muted-foreground">
-        {viewer.simulated
-          ? "这是本地预览用的演示账号。团队正式打开后，这里显示各自的名字。"
-          : viewer.kind === "key"
-            ? "这是接口密钥，不是同事的账号。"
-            : "当前登录"}
-      </p>
     </div>
   );
 }

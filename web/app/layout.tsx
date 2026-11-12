@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -14,10 +15,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "悬架创新工作台",
-  description: "登录后记下乘用车悬架的结构想法，并写成两页介绍。",
+  description: "打开就能记下乘用车悬架的结构想法，并写成两页介绍。",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="zh-CN"
