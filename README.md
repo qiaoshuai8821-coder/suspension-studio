@@ -55,6 +55,18 @@ python3 -m pptgen examples/e-platform-rear/proposal.yaml --check
 
 如果实际基线是扭力梁、整体桥或商用车悬架，不要沿用示例的三案，按技能重新写矛盾和必要特征。
 
+## 网页演示
+
+`web/` 是一个可登录的工作台。打开已发布的页面时，用 Cursor 账号进入。在这台机器上没有登录头，页面显示的是本地演示身份。
+
+```bash
+cd web
+npm install
+env -u DATABASE_URL npm run dev -- -p 3847 --hostname 127.0.0.1
+```
+
+登录后可以收集悬架结构想法，也可以按提示词生成两页介绍并下载 PPT。提示里如果写到电池，会被拒绝。生成结果是按你写下的句子整理的草案，未做检索。
+
 ## 两则短介绍
 
 `proposals/two-intro/` 是另一份提案稿，每则两页，共四页。它不沿用上面三案的分路支架、车高安装块和斜孔。

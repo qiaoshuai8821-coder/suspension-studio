@@ -1,0 +1,69 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
+import { headers } from "next/headers";
+
+import { Workspace, type DeckItem, type Idea, type ViewerCard } from "@/components/workspace";
+import { getIdentity } from "../cursor/identity";
+import { listDecks, listIdeas, stamp } from "../lib/records";
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<p className="px-6 py-8 text-sm text-muted-foreground">正在确认身份…</p>}>
+      <Home />
+    </Suspense>
+  );
+}
+
+async function Home() {
+  await connection();
+  const identity = await getIdentity(await headers());
+  if (!identity.verified) {
+    return (
+      <main className="mx-auto flex min-h-full max-w-lg flex-col justify-center gap-3 px-6 py-16">
+        <p className="text-sm font-medium text-primary">悬架创新工作台</p>
+        <h1 className="text-3xl font-semibold">需要登录后才能收集和生成</h1>
+        <p className="text-sm leading-6 text-muted-foreground">
+          打开已发布的工作台时，由 Cursor 账号完成登录。本地演示把身份关掉后，会停在这一页。这里没有另外一套账号密码。
+        </p>
+      </main>
+    );
+  }
+
+  const viewer: ViewerCard = {
+    label: identity.kind === "key" ? identity.name || "密钥" : identity.name || identity.email || "已登录",
+    simulated: identity.simulated,
+    kind: identity.kind,
+  };
+  let ideas: Idea[] = [];
+  let decks: DeckItem[] = [];
+  let loadError = "";
+  try {
+    const [ideaRows, deckRows] = await Promise.all([
+      listIdeas(identity.stage, identity.sub),
+      listDecks(identity.stage, identity.sub),
+    ]);
+    ideas = ideaRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      axle: row.axle,
+      baseline: row.baseline,
+      body: row.body,
+      createdAt: stamp(row.created_at),
+    }));
+    decks = deckRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      prompt: row.prompt,
+      createdAt: stamp(row.created_at),
+    }));
+  } catch {
+    loadError = "收集列表暂时打不开。刷新一次；如果仍打不开，先不要重复提交。";
+  }
+
+  return (
+    <main>
+      {loadError ? <p className="px-6 pt-4 text-sm text-destructive">{loadError}</p> : null}
+      <Workspace viewer={viewer} initialIdeas={ideas} initialDecks={decks} />
+    </main>
+  );
+}
