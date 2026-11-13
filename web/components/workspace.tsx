@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { draftFromPrompt } from "@/lib/draft";
+import { draftFromPrompt, type Draft } from "@/lib/draft";
 import { checkIdea, type Idea } from "@/lib/ideas";
 import { bytesToBase64, downloadPptx, readStore, writeStore, type StoredDeck } from "@/lib/local-store";
+import { providers, type ProviderId } from "@/lib/providers";
 import { promptStarters, sampleIdeas, type SampleIdea } from "@/lib/samples";
 
 type Feature = { id: string; text: string };
@@ -22,15 +23,23 @@ export function Workspace() {
   const [axle, setAxle] = useState("后悬架");
   const [baseline, setBaseline] = useState("");
   const [body, setBody] = useState("");
-  const [prompt, setPrompt] = useState(promptStarters[0]);
+  const [prompt, setPrompt] = useState(promptStarters[2]);
+  const [provider, setProvider] = useState<ProviderId>("deepseek");
+  const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState<"save" | "generate" | null>(null);
   const [error, setError] = useState("");
-  const [latest, setLatest] = useState<{ id: string; title: string; features: Feature[]; pptxBase64: string } | null>(null);
+  const [note, setNote] = useState("");
+  const [latest, setLatest] = useState<{ id: string; title: string; features: Feature[]; pptxBase64: string; fromModel: boolean } | null>(null);
 
   useEffect(() => {
     const saved = readStore();
     setIdeas(saved.ideas);
     setDecks(saved.decks);
+    const llm = readLlm();
+    if (llm) {
+      setProvider(llm.provider);
+      setApiKey(llm.apiKey);
+    }
     setReady(true);
   }, []);
 
@@ -60,28 +69,64 @@ export function Workspace() {
     setBody("");
   }
 
+  function rememberLlm(nextProvider: ProviderId, nextKey: string) {
+    setProvider(nextProvider);
+    setApiKey(nextKey);
+    writeLlm(nextProvider, nextKey);
+  }
+
   async function generate(nextPrompt: string) {
     setBusy("generate");
     setError("");
+    setNote("");
     setLatest(null);
-    const drafted = draftFromPrompt(nextPrompt);
-    if (!drafted.ok) {
-      setBusy(null);
-      setError(drafted.error);
-      return;
+    const key = apiKey.trim();
+    let draft: Draft;
+    let fromModel = false;
+    if (!key) {
+      const drafted = draftFromPrompt(nextPrompt);
+      if (!drafted.ok) {
+        setBusy(null);
+        setError(drafted.error);
+        return;
+      }
+      draft = drafted.draft;
+      setNote("这次没有走大模型，只是把你写的句子拆开。填上密钥后再生成，才会按车型、零件和方向来写。");
+    } else {
+      writeLlm(provider, key);
+      let response: Response;
+      try {
+        response = await fetch("/api/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: nextPrompt, provider, apiKey: key }),
+        });
+      } catch {
+        setBusy(null);
+        setError("没有连上生成服务。");
+        return;
+      }
+      const payload = (await response.json().catch(() => null)) as { error?: string; draft?: Draft } | null;
+      if (!response.ok || !payload?.draft) {
+        setBusy(null);
+        setError(payload?.error || "模型没有写完。");
+        return;
+      }
+      draft = payload.draft;
+      fromModel = true;
     }
     const { renderDraft } = await import("@/lib/slides");
-    const bytes = await renderDraft(drafted.draft);
+    const bytes = await renderDraft(draft);
     const pptxBase64 = bytesToBase64(bytes);
     const deck: StoredDeck = {
       id: crypto.randomUUID(),
-      title: drafted.draft.title,
-      prompt: nextPrompt.slice(0, 1500),
+      title: draft.title,
+      prompt: nextPrompt.slice(0, 2000),
       createdAt: new Date().toISOString(),
       pptxBase64,
     };
     setDecks((current) => [deck, ...current].slice(0, 12));
-    setLatest({ id: deck.id, title: deck.title, features: drafted.draft.features, pptxBase64 });
+    setLatest({ id: deck.id, title: deck.title, features: draft.features, pptxBase64, fromModel });
     setBusy(null);
   }
 
@@ -96,7 +141,7 @@ export function Workspace() {
         <p className="text-sm font-medium text-primary">乘用车悬架平台</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">悬架创新工作台</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          打开就能用。想法记在这台浏览器里，换一台电脑不会跟着走。把项目下载到自己电脑上，按说明启动，也是这一套。只写悬架零件。出来的是讨论稿，还没做过检索。
+          打开就能用。填上你自己的模型密钥后，按车型、零件和方向来写两页。密钥只留在这台浏览器里，用来向你选的那一家模型要结果。只写悬架零件。出来的是讨论稿，还没做过检索。
         </p>
       </header>
 
@@ -202,9 +247,38 @@ export function Workspace() {
         <Card id="slides" className="scroll-mt-4">
           <CardHeader>
             <CardTitle>写成两页</CardTitle>
-            <CardDescription>至少写三句：零件怎么连，力或者位移怎么走。写完就能下载。</CardDescription>
+            <CardDescription>写清哪款车、哪个零件或系统、想往哪个方向改。模型会按这个方向写出结构关系。</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            <div className="grid gap-3 sm:grid-cols-[9rem_minmax(0,1fr)]">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="provider">模型</Label>
+                <select
+                  id="provider"
+                  value={provider}
+                  onChange={(event) => rememberLlm(event.target.value as ProviderId, apiKey)}
+                  className="h-11 w-full rounded-lg border border-input bg-transparent px-2 text-base"
+                >
+                  {Object.entries(providers).map(([id, item]) => (
+                    <option key={id} value={id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="apiKey">模型密钥</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  autoComplete="off"
+                  value={apiKey}
+                  onChange={(event) => rememberLlm(provider, event.target.value)}
+                  placeholder="填一次就留在这台浏览器里"
+                  className="h-11 text-base"
+                />
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               {promptStarters.map((starter) => (
                 <Button key={starter.slice(0, 12)} type="button" variant="outline" className="h-auto min-h-11 whitespace-normal px-3 py-2 text-left text-sm" onClick={() => setPrompt(starter)}>
@@ -212,10 +286,11 @@ export function Workspace() {
                 </Button>
               ))}
             </div>
-            <Textarea value={prompt} maxLength={1500} onChange={(event) => setPrompt(event.target.value)} className="min-h-36 text-base sm:min-h-40" />
+            <Textarea value={prompt} maxLength={2000} onChange={(event) => setPrompt(event.target.value)} placeholder="例如：后驱轿车，后悬下控制臂内点。轮跳末端的冲击不要再进衬套，想在缓冲块压实之后另开一条进纵梁的传力路径。车身安装孔不动。" className="min-h-36 text-base sm:min-h-40" />
             <Button type="button" className="h-11 w-full px-4 text-base sm:w-auto" disabled={busy !== null} onClick={() => void generate(prompt)}>
-              {busy === "generate" ? "正在写这两页…" : "生成两页幻灯片"}
+              {busy === "generate" ? (apiKey.trim() ? "正在让模型写这两页…" : "正在整理这两页…") : "生成两页幻灯片"}
             </Button>
+            {note ? <p className="rounded-lg bg-muted px-3 py-3 text-sm leading-6 text-muted-foreground">{note}</p> : null}
 
             {latest ? (
               <div className="rounded-lg border border-primary/30 bg-accent px-3 py-3">
@@ -227,7 +302,10 @@ export function Workspace() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 text-sm leading-6">这些方案具备写成独立权利要求的结构关系。是不是新的、值不值得申请，要检索之后才知道。</p>
+                <p className="mt-3 text-sm leading-6">
+                  {latest.fromModel ? "这是模型按你的提示写的讨论稿，里面的数字不是实测。" : "这是按你写下的句子整理的，不是模型写的。"}
+                  这些方案具备写成独立权利要求的结构关系。是不是新的、值不值得申请，要检索之后才知道。
+                </p>
                 <Button type="button" className="mt-3 h-11 w-full px-4 text-base sm:w-auto" onClick={() => downloadPptx(latest.pptxBase64, latest.title)}>
                   下载幻灯片
                 </Button>
@@ -273,6 +351,25 @@ export function Workspace() {
 
 function compose(idea: { title: string; axle: string; baseline: string; body: string }) {
   return `标题：${idea.title}\n桥：${idea.axle}\n基线：${idea.baseline}\n结构：${idea.body}`;
+}
+
+const llmStorageKey = "suspension-studio-llm-v1";
+
+function readLlm(): { provider: ProviderId; apiKey: string } | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(llmStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { provider?: string; apiKey?: string };
+    if (!parsed.provider || !(parsed.provider in providers) || typeof parsed.apiKey !== "string") return null;
+    return { provider: parsed.provider as ProviderId, apiKey: parsed.apiKey };
+  } catch {
+    return null;
+  }
+}
+
+function writeLlm(provider: ProviderId, apiKey: string) {
+  localStorage.setItem(llmStorageKey, JSON.stringify({ provider, apiKey }));
 }
 
 function formatWhen(value: string) {

@@ -34,8 +34,8 @@ export function draftFromPrompt(prompt: string): { ok: true; draft: Draft } | { 
   if (text.length < 12) {
     return { ok: false, error: "再写具体些：谁和谁连，力或者位移从哪走到哪。" };
   }
-  if (text.length > 1500) {
-    return { ok: false, error: "太长了，请收在一千五百字以内。" };
+  if (text.length > 2000) {
+    return { ok: false, error: "太长了，请收在两千字以内。" };
   }
   if (text.includes("电池")) {
     return { ok: false, error: "电池不归我们改。请只写悬架零件之间怎么传力。" };
@@ -147,4 +147,79 @@ function clip(value: string, max: number): string {
   const trimmed = value.replace(/\s+/g, " ").trim();
   if (trimmed.length <= max) return trimmed;
   return `${trimmed.slice(0, max - 1)}…`;
+}
+
+const judgment = "这些方案具备写成独立权利要求的结构关系。是不是新的、值不值得申请，要检索之后才知道。";
+
+export function acceptModelDraft(value: unknown): { ok: true; draft: Draft } | { ok: false; error: string } {
+  const record = asRecord(value);
+  if (!record) return { ok: false, error: "模型没有按约定的格式返回，请再生成一次。" };
+
+  const axle = textOf(record.axle);
+  if (axle !== "前悬架" && axle !== "后悬架" && axle !== "前后悬架") {
+    return { ok: false, error: "模型没有写清是前悬还是后悬，请在提示里点明，再生成一次。" };
+  }
+
+  const features = asList(record.features)
+    .map((item, index) => {
+      const row = asRecord(item);
+      return { id: `F${index + 1}`, text: clip(row ? textOf(row.text) : "", 72) };
+    })
+    .filter((item) => item.text.length >= 6)
+    .slice(0, 4);
+  if (features.length < 3) {
+    return { ok: false, error: "模型没写出三条结构关系。把零件和想改的方向再写具体一点，然后重试。" };
+  }
+
+  const embodiments = asList(record.embodiments)
+    .map((item) => {
+      const row = asRecord(item);
+      if (!row) return null;
+      let difference = clip(textOf(row.difference), 80);
+      if (difference && !difference.includes("相对")) difference = `相对另一种做法，${difference}`;
+      return {
+        name: clip(textOf(row.name) || "一种做法", 16),
+        structure: clip(textOf(row.structure), 90),
+        difference,
+      };
+    })
+    .filter((item): item is Draft["embodiments"][number] => Boolean(item && item.structure && item.difference))
+    .slice(0, 2);
+  if (embodiments.length < 2) {
+    return { ok: false, error: "模型没写出两种可以对照的做法，请再生成一次。" };
+  }
+
+  const draft: Draft = {
+    title: clip(textOf(record.title) || features[0].text, 22),
+    axle,
+    problemTitle: clip(textOf(record.problemTitle) || textOf(record.title), 28),
+    baseline: clip(textOf(record.baseline), 120),
+    onlyThis: clip(textOf(record.onlyThis) || "这两页只写提示里点到的零件和传力路径。", 110),
+    features,
+    embodiments,
+    setup: clip(textOf(record.setup) || "按提示里的工况把零件装出来，量提示里点到的部位。", 80),
+    criterion: clip(textOf(record.criterion) || "两种做法的差别要和上面的结构关系一致。没做过试验的限值先空着。", 80),
+    claim: clip(textOf(record.claim) || buildClaim(axle, features.map((feature) => feature.text)), 180),
+    riskReason: judgment,
+  };
+
+  const joined = JSON.stringify(draft);
+  if (joined.includes("电池")) return { ok: false, error: "模型写到了电池。请只让它改悬架零件之间的传力。" };
+  const hit = banned.find((phrase) => joined.includes(phrase));
+  if (hit) return { ok: false, error: `模型用了「${hit}」。请再生成一次。` };
+  if (!draft.baseline) return { ok: false, error: "模型没写出现在卡在哪，请再生成一次。" };
+  return { ok: true, draft };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function asList(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function textOf(value: unknown): string {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
