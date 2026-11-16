@@ -148,8 +148,7 @@ export function Workspace() {
         <div className="flex items-start gap-3 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
           <Mark />
           <div className="min-w-0">
-            <p className="font-mono text-[11px] font-medium tracking-[0.16em] text-primary">CHASSIS · SUSPENSION</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">悬架创新工作台</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">悬架创新工作台</h1>
             <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">按车型、零件和方向，写成两页结构讨论稿。密钥只留在这台浏览器里。</p>
           </div>
         </div>
@@ -192,18 +191,31 @@ export function Workspace() {
                 saveIdea({ title, axle, baseline, body });
               }}
             >
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="title">标题</Label>
-                  <Input id="title" value={title} maxLength={40} onChange={(event) => setTitle(event.target.value)} placeholder="例如：轮跳末端的第二接触" />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="axle">部位</Label>
-                  <FieldSelect id="axle" value={axle} onChange={(event) => setAxle(event.target.value)}>
-                    <option>前悬架</option>
-                    <option>后悬架</option>
-                    <option>前后悬架</option>
-                  </FieldSelect>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="title">标题</Label>
+                <Input id="title" value={title} maxLength={40} onChange={(event) => setTitle(event.target.value)} placeholder="例如：轮跳末端的第二接触" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label id="axle-label">部位</Label>
+                <div role="radiogroup" aria-labelledby="axle-label" className="grid h-11 grid-cols-3 gap-1 rounded-lg border border-input bg-card p-1">
+                  {axleChoices.map((choice) => {
+                    const selected = axle === choice.value;
+                    return (
+                      <button
+                        key={choice.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setAxle(choice.value)}
+                        className={cn(
+                          "h-full whitespace-nowrap rounded-md px-2 text-sm font-medium",
+                          selected ? "bg-[#1F4E5F] text-white" : "text-foreground hover:bg-muted",
+                        )}
+                      >
+                        {choice.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -214,7 +226,7 @@ export function Workspace() {
                 <Label htmlFor="body">结构关系</Label>
                 <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="谁和谁连着；平时什么样；到了那个工况，力走到哪；哪组孔不动" className="min-h-28" />
               </div>
-              <Button type="submit" variant="outline" disabled={busy !== null} className="h-11 w-full px-4 text-base sm:w-auto sm:self-start">
+              <Button type="submit" disabled={busy !== null} className="h-11 w-full px-4 text-base font-semibold text-white">
                 记下来
               </Button>
             </form>
@@ -394,6 +406,12 @@ export function Workspace() {
     </div>
   );
 }
+
+const axleChoices = [
+  { label: "前悬架", value: "前悬架" },
+  { label: "后悬架", value: "后悬架" },
+  { label: "前后", value: "前后悬架" },
+];
 
 function Mark() {
   return (
