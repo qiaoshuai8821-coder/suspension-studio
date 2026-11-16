@@ -325,7 +325,7 @@ export function Workspace() {
                     )}
                   >
                     <span className="font-mono text-[11px] font-medium tracking-wide text-accent tabular-nums">方向 0{index + 1}</span>
-                    <span className="mt-1 block text-sm leading-6 text-foreground">{starter.length > 54 ? `${starter.slice(0, 54)}…` : starter}</span>
+                    <span className="mt-1 block text-sm leading-6 text-foreground">{starter}</span>
                   </button>
                 );
               })}
