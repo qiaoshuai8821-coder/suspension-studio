@@ -193,7 +193,7 @@ export function Workspace() {
             >
               <div className="flex flex-col gap-2">
                 <Label htmlFor="title">标题</Label>
-                <Input id="title" value={title} maxLength={40} onChange={(event) => setTitle(event.target.value)} placeholder="例如：轮跳末端的第二接触" />
+                <Input id="title" value={title} maxLength={40} onChange={(event) => setTitle(event.target.value)} placeholder="例如：极限轮跳时的额外传力路径" />
               </div>
               <div className="flex flex-col gap-2">
                 <Label id="axle-label">部位</Label>
@@ -220,11 +220,11 @@ export function Workspace() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="baseline">现在卡在哪</Label>
-                <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现有结构里，哪一处同时干了两件互相打架的事" />
+                <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现有结构中，哪个零件需要同时满足两个互相冲突的要求" />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="body">结构关系</Label>
-                <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="谁和谁连着；平时什么样；到了那个工况，力走到哪；哪组孔不动" className="min-h-28" />
+                <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="各零件如何连接；正常状态下的形态；该工况下力如何传递；哪些安装孔保持固定" className="min-h-28" />
               </div>
               <Button type="submit" disabled={busy !== null} className="h-11 w-full px-4 text-base font-semibold text-white">
                 记下来
