@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PROOF_BITS, solveProof } from "@/lib/draft-proof";
 import { draftFromPrompt, type Draft } from "@/lib/draft";
 import { checkIdea, type Idea } from "@/lib/ideas";
 import { bytesToBase64, downloadPptx, readStore, writeStore, type StoredDeck } from "@/lib/local-store";
@@ -102,10 +103,35 @@ export function Workspace() {
       writeLlm(provider, key);
       let response: Response;
       try {
+        const ticketResponse = await fetch("/api/draft/ticket");
+        const ticket = (await ticketResponse.json().catch(() => null)) as {
+          id?: string;
+          nonce?: string;
+          bits?: number;
+          error?: string;
+        } | null;
+        if (!ticketResponse.ok || !ticket?.id || !ticket.nonce || ticket.bits !== PROOF_BITS) {
+          setBusy(null);
+          setError(ticket?.error || "页面校验没有通过，请再生成一次。");
+          return;
+        }
+        const salt = await solveProof(ticket.id, ticket.nonce);
+        if (!salt) {
+          setBusy(null);
+          setError("页面校验没有通过，请再生成一次。");
+          return;
+        }
         response = await fetch("/api/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: nextPrompt, provider, apiKey: key }),
+          body: JSON.stringify({
+            prompt: nextPrompt,
+            provider,
+            apiKey: key,
+            proofId: ticket.id,
+            nonce: ticket.nonce,
+            salt,
+          }),
         });
       } catch {
         setBusy(null);
@@ -149,7 +175,7 @@ export function Workspace() {
           <Mark />
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">悬架创新工作台</h1>
-            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">按车型、零件和方向，写成五页完整提案。密钥只留在这台浏览器里。</p>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">按车型、零件和方向，写成五页完整提案。密钥留在这台浏览器；生成时发给本站，只转给你选的模型，服务器不保存。</p>
           </div>
         </div>
         <ol className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-border bg-card/80 px-3 py-3 sm:px-5">
@@ -307,7 +333,7 @@ export function Workspace() {
                   autoComplete="off"
                   value={apiKey}
                   onChange={(event) => rememberLlm(provider, event.target.value)}
-                  placeholder="填一次就留在这台浏览器里"
+                  placeholder="留在这台浏览器，生成时才转发"
                 />
               </div>
             </div>

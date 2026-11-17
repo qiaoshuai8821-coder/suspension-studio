@@ -1,4 +1,5 @@
 import { acceptModelDraft } from "@/lib/draft";
+import { clientAddress, fromOurPage, openDraftGate } from "@/lib/draft-guard";
 import { isProviderId, providers } from "@/lib/providers";
 
 import { AgentError, runAgent } from "@/lib/agent/runtime";
@@ -20,12 +21,19 @@ export async function POST(request: Request) {
   const apiKey = typeof record?.apiKey === "string" ? record.apiKey.trim() : "";
 
   if (!isProviderId(providerId)) return jsonError("请先选一个模型。", 400);
-  if (apiKey.length < 8 || apiKey.length > 400) return jsonError("请填这台浏览器要用的模型密钥。", 400);
+  if (apiKey.length < 8 || apiKey.length > 400) return jsonError("请填模型密钥。生成时只转给你选的那一家，服务器不保存。", 400);
   if (prompt.length < 12) return jsonError("再写具体些：哪款车、哪个零件、想往哪个方向改。", 400);
   if (prompt.length > 2000) return jsonError("提示请收在两千字以内。", 400);
   if (bannedInPrompt.some((word) => prompt.includes(word))) {
     return jsonError("电池不归我们改。请只写悬架零件之间怎么传力。", 400);
   }
+  if (!fromOurPage(request)) return jsonError("请从工作台页面发起。", 403);
+
+  const proofId = typeof record?.proofId === "string" ? record.proofId : "";
+  const nonce = typeof record?.nonce === "string" ? record.nonce : "";
+  const salt = typeof record?.salt === "string" ? record.salt : "";
+  const gate = await openDraftGate(clientAddress(request), { id: proofId, nonce, salt });
+  if (!gate.ok) return jsonError(gate.error, gate.status);
 
   const provider = providers[providerId];
 
@@ -54,7 +62,7 @@ export async function POST(request: Request) {
     accepted.draft.searchNote = result.evidence.searchNote;
     accepted.draft.priorArt = result.evidence.priorArt;
 
-    return Response.json({ draft: accepted.draft, source: "agent", trace: result.trace });
+    return Response.json({ draft: accepted.draft, source: "agent" });
   } catch (error) {
     if (error instanceof AgentError) {
       if (error.status === 400) {
@@ -63,6 +71,8 @@ export async function POST(request: Request) {
       return jsonError(error.message, error.status);
     }
     return jsonError("模型没有写完。请再生成一次。", 502);
+  } finally {
+    gate.release();
   }
 }
 
