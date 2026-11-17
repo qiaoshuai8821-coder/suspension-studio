@@ -72,7 +72,7 @@ export function Workspace() {
     setTitle("");
     setBaseline("");
     setBody("");
-    setSaved(`已记下「${next.title}」。下一步到第二步，写成五页提案。`);
+    setSaved(`记好了：「${next.title}」。接着到第二步，把它写成五页提案。`);
   }
 
   function rememberLlm(nextProvider: ProviderId, nextKey: string) {
@@ -98,7 +98,7 @@ export function Workspace() {
         return;
       }
       draft = drafted.draft;
-      setNote("这次没有走大模型，只是把你写的句子拆开。填上密钥后再生成，才会按车型、零件和方向来写。");
+      setNote("这次没调用大模型，只是按你写的句子做了个整理。填上密钥再生成一次，模型才会真正按车型、零件和方向来写。");
     } else {
       writeLlm(provider, key);
       let response: Response;
@@ -175,7 +175,7 @@ export function Workspace() {
           <Mark />
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">悬架创新工作台</h1>
-            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">按车型、零件和方向，写成五页完整提案。密钥留在这台浏览器；生成时发给本站，只转给你选的模型，服务器不保存。</p>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">你只要说清车型、零件和想改的方向，我就帮你写成五页提案。密钥只放在你这台浏览器里，生成时转给你选的模型，这边服务器不存。</p>
           </div>
         </div>
         <ol className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-border bg-card/80 px-3 py-3 sm:px-5">
@@ -207,7 +207,7 @@ export function Workspace() {
       <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-5">
         <Card id="ideas" className="scroll-mt-4">
           <CardHeader className="border-b border-border pb-4">
-            <StepHeading index="01" icon={<NotebookPen className="size-4" />} title="记下想法" detail="写清前悬还是后悬、现在卡在哪、零件之间怎么连。示例可以直接收下再改。" />
+            <StepHeading index="01" icon={<NotebookPen className="size-4" />} title="记下想法" detail="先想清楚是前悬还是后悬、现在卡在哪、零件之间怎么连。下面的示例可以直接用，再照着改。" />
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <form
@@ -246,11 +246,11 @@ export function Workspace() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="baseline">现在卡在哪</Label>
-                <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现有结构中，哪个零件需要同时满足两个互相冲突的要求" />
+                <Textarea id="baseline" value={baseline} maxLength={300} onChange={(event) => setBaseline(event.target.value)} placeholder="现在哪个零件最为难，得同时满足两个互相矛盾的要求" />
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="body">结构关系</Label>
-                <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="各零件如何连接；正常状态下的形态；该工况下力如何传递；哪些安装孔保持固定" className="min-h-28" />
+                <Textarea id="body" value={body} maxLength={800} onChange={(event) => setBody(event.target.value)} placeholder="零件之间怎么连、平时是什么状态；这个工况下力怎么传；哪些安装孔不能动" className="min-h-28" />
               </div>
               <Button type="submit" disabled={busy !== null} className="h-11 w-full px-4 text-base font-semibold text-white">
                 记下来
@@ -260,7 +260,7 @@ export function Workspace() {
             <section className="flex flex-col gap-2">
               <SectionLabel>已记下的想法</SectionLabel>
               {ideas.length === 0 ? (
-                <EmptyState title="还没记下想法" body="先收下面的示例，再按你们的实车改零件和传力路径。" />
+                <EmptyState title="还没记下想法" body="先看看下面的示例，可以直接拿来用，再照着你手头的实车改零件和传力路径。" />
               ) : (
                 ideas.map((idea) => (
                   <article key={idea.id} className="rounded-lg border border-border bg-card px-3 py-3">
@@ -288,7 +288,7 @@ export function Workspace() {
             </section>
 
             <section className="flex flex-col gap-2">
-              <SectionLabel>示例，点卡片就能记下</SectionLabel>
+              <SectionLabel>点一下卡片，就能把示例记下来</SectionLabel>
               {sampleIdeas.map((idea) => (
                 <button
                   key={idea.title}
@@ -311,7 +311,7 @@ export function Workspace() {
 
         <Card id="slides" className="scroll-mt-4">
           <CardHeader className="border-b border-border pb-4">
-            <StepHeading index="02" icon={<FileText className="size-4" />} title="写成五页" detail="写清哪款车、哪个零件或系统、想往哪个方向改。这一步才是生成。" accent />
+            <StepHeading index="02" icon={<FileText className="size-4" />} title="写成五页" detail="写清哪款车、哪个零件、想怎么改，再点生成。" accent />
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-[9.5rem_minmax(0,1fr)]">
@@ -384,8 +384,8 @@ export function Workspace() {
                   ))}
                 </ul>
                 <p className="mt-3 text-sm leading-6 text-foreground">
-                  {latest.fromModel ? "这是模型按你的提示写的讨论稿，里面的数字不是实测。" : "这是按你写下的句子整理的，不是模型写的。"}
-                  这些方案具备写成独立权利要求的结构关系。是不是新的、值不值得申请，要检索之后才知道。
+                  {latest.fromModel ? "这是模型按你的提示写的，里面的数字不是实测，先别当成真的。" : "这是按你写的句子整理的，没有调用模型。"}
+                  这些结构已经够格写成独立权利要求。但它到底新不新、值不值得申请，要先检索才知道。
                 </p>
                 <Button type="button" className="mt-3 h-11 w-full px-4 text-base sm:w-auto" onClick={() => downloadPptx(latest.pptxBase64, latest.title)}>
                   <Download className="size-4" />
