@@ -78,11 +78,71 @@ export type AgentEvent = {
   observation?: string;
 };
 
+// ===== 完整提案相关的结构化类型 =====
+
+export type PriorArtItem = {
+  title: string;
+  // 专利 / 竞品 / 技术资料
+  kind: string;
+  source: string;
+  url: string;
+  relevance: string;
+};
+
+export type ClaimRow = {
+  // 命中专利的技术特征
+  feature: string;
+  // 本方案对应做法
+  ours: string;
+  // 相同 / 等同 / 缺失
+  match: string;
+};
+
+export type DesignAroundItem = {
+  // 重叠或风险点
+  risk: string;
+  // 规避做法
+  alternative: string;
+  // 权利要求差异化处理
+  claimChange: string;
+};
+
+export type Benefits = {
+  performance: string;
+  cost: string;
+  platform: string;
+  patent: string;
+};
+
+export type Implementation = {
+  material: string;
+  machining: string;
+  assembly: string;
+  tolerance: string;
+};
+
+// 工具执行器需要的运行时上下文：联网检索要用到 Key 和站点地址，
+// evidence 是可变容器，搜索工具把真实来源写进去，最终由后端合并进成稿。
+export type ToolContext = {
+  apiKey: string;
+  chatUrl: string;
+  providerId: string;
+  evidence: PriorArtItem[];
+};
+
 export type RunAgentInput = {
   url: string;
   model: string;
   apiKey: string;
   prompt: string;
+  providerId: string;
+};
+
+// 检索阶段沉淀的真实证据，route 层据此覆盖模型转述的来源，保证引用真实。
+export type Evidence = {
+  searched: boolean;
+  searchNote: string;
+  priorArt: PriorArtItem[];
 };
 
 export type RunAgentResult = {
@@ -90,4 +150,6 @@ export type RunAgentResult = {
   content: string;
   trace: AgentEvent[];
   iterations: number;
+  evidence: Evidence;
 };
+

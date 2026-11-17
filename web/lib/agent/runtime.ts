@@ -1,6 +1,7 @@
 // Agent 运行时：Plan / Act / Observe / Finalize 状态机。
 // 用一个带最大步数与超时的循环驱动模型进行多步推理和工具调用，
 // 直到产出符合 Draft 契约的 JSON 文本，再交给上层 acceptModelDraft 严格校验。
+// 联网检索的真实来源通过 evidence 一并返回，由 route 层覆盖模型转述。
 
 import { agentSystemPrompt, continueInstruction, forceFinalizeInstruction } from "./prompts";
 import { executeTool, toolSchemas } from "./tools";
@@ -8,12 +9,15 @@ import type {
   AgentEvent,
   AssistantMessage,
   ChatMessage,
+  Evidence,
+  PriorArtItem,
   RunAgentInput,
   RunAgentResult,
   ToolCall,
+  ToolContext,
 } from "./types";
 
-const MAX_ITERATIONS = 6;
+const MAX_ITERATIONS = 8;
 const REQUEST_TIMEOUT_MS = 25_000;
 
 // 带 HTTP 状态的运行时错误，便于路由层映射成对应的中文提示。
@@ -49,9 +53,33 @@ function tryParseDraft(content: string): unknown | null {
   }
 }
 
+// 根据真实命中的 evidence 生成检索状态汇总；无命中时如实标注未联网及原因。
+function buildEvidence(evidence: PriorArtItem[], providerId: string): Evidence {
+  if (evidence.length > 0) {
+    return {
+      searched: true,
+      searchNote: "已联网检索，来源见第4页，链接为工具返回的真实地址。",
+      priorArt: evidence,
+    };
+  }
+  const searchNote =
+    providerId === "deepseek"
+      ? "联网未命中或检索失败，已回退本地案例，结论需人工复核。"
+      : "当前模型未开启联网，使用本地演示案例，正式立项前需用专利系统人工检索。";
+  return { searched: false, searchNote, priorArt: [] };
+}
+
 export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
-  const { url, model, apiKey, prompt } = input;
+  const { url, model, apiKey, prompt, providerId } = input;
   const trace: AgentEvent[] = [];
+  const evidenceStore: PriorArtItem[] = [];
+
+  const toolContext: ToolContext = {
+    apiKey,
+    chatUrl: url,
+    providerId,
+    evidence: evidenceStore,
+  };
 
   // 真实的 chat 实现：闭包注入 url/model/apiKey。
   async function callModel(messages: ChatMessage[], includeTools: boolean): Promise<AssistantMessage> {
@@ -157,7 +185,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
       });
 
       for (const toolCall of toolCalls) {
-        const result = await executeTool(toolCall.function.name, toolCall.function.arguments);
+        const result = await executeTool(toolCall.function.name, toolCall.function.arguments, toolContext);
         messages.push({ role: "tool", tool_call_id: toolCall.id, content: result.output });
         trace.push({
           phase: "observe",
@@ -172,7 +200,12 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     // 没有工具调用：要么是最终成稿，要么是跑偏的文本。
     if (tryParseDraft(assistant.content) !== null) {
       trace.push({ phase: "finalize", at: new Date().toISOString() });
-      return { content: assistant.content, trace, iterations: iteration };
+      return {
+        content: assistant.content,
+        trace,
+        iterations: iteration,
+        evidence: buildEvidence(evidenceStore, providerId),
+      };
     }
 
     // 内容无法解析，追加纠偏提示后继续。
@@ -186,5 +219,11 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     throw new AgentError(502, "模型没有按约定的格式返回，请再生成一次。");
   }
   trace.push({ phase: "finalize", at: new Date().toISOString() });
-  return { content: finalAssistant.content, trace, iterations: MAX_ITERATIONS + 1 };
+  return {
+    content: finalAssistant.content,
+    trace,
+    iterations: MAX_ITERATIONS + 1,
+    evidence: buildEvidence(evidenceStore, providerId),
+  };
 }
+

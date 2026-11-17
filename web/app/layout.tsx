@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "悬架创新工作台",
-  description: "打开就能记下乘用车悬架的结构想法，并写成两页介绍。",
+  description: "打开就能记下乘用车悬架的结构想法，并写成五页完整提案。",
 };
 
 export const viewport: Viewport = {

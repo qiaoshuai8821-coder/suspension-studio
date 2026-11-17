@@ -3,7 +3,7 @@ import { isProviderId, providers } from "@/lib/providers";
 
 import { AgentError, runAgent } from "@/lib/agent/runtime";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const bannedInPrompt = ["电池"];
 
@@ -29,18 +29,18 @@ export async function POST(request: Request) {
 
   const provider = providers[providerId];
 
-  // 首选：运行 Agent（规划 + 工具调用 + 成稿）。
+  // 首选：运行 Agent（规划 + 工具调用 + 真实联网 + 成稿）。
   try {
     const result = await runAgent({
       url: provider.url,
       model: provider.model,
       apiKey,
       prompt,
+      providerId,
     });
 
     const parsed = parseJsonText(result.content);
     if (parsed === null) {
-      // Agent 成稿无法解析，降级到单次模式兜底。
       return await legacySingleShot(provider.url, provider.model, apiKey, prompt);
     }
 
@@ -48,11 +48,15 @@ export async function POST(request: Request) {
     if (!accepted.ok) {
       return await legacySingleShot(provider.url, provider.model, apiKey, prompt);
     }
-    // trace 一并返回，当前前端可忽略；后续可用于展示 Agent 执行轨迹。
+
+    // 用真实检索证据覆盖模型转述，保证来源真实、检索状态可信。
+    accepted.draft.searched = result.evidence.searched;
+    accepted.draft.searchNote = result.evidence.searchNote;
+    accepted.draft.priorArt = result.evidence.priorArt;
+
     return Response.json({ draft: accepted.draft, source: "agent", trace: result.trace });
   } catch (error) {
     if (error instanceof AgentError) {
-      // 400 表示当前模型不支持工具参数，降级到旧的单次调用，保证可用性。
       if (error.status === 400) {
         return await legacySingleShot(provider.url, provider.model, apiKey, prompt);
       }
@@ -62,7 +66,6 @@ export async function POST(request: Request) {
   }
 }
 
-// 把 Agent 成稿文本安全解析为 unknown。
 function parseJsonText(content: string): unknown | null {
   try {
     return JSON.parse(stripFence(content));
@@ -71,7 +74,7 @@ function parseJsonText(content: string): unknown | null {
   }
 }
 
-// 降级路径：保留改造前的单次 JSON 模式调用行为。
+// 降级路径：保留单次 JSON 模式调用行为，不联网。
 async function legacySingleShot(
   url: string,
   model: string,
@@ -111,6 +114,7 @@ async function legacySingleShot(
   }
   const accepted = acceptModelDraft(parsed);
   if (!accepted.ok) return jsonError(accepted.error, 422);
+  accepted.draft.searchNote = "降级为单次生成，未联网检索，正式立项前需人工专利检索。";
   return Response.json({ draft: accepted.draft, source: "model" });
 }
 
@@ -134,10 +138,9 @@ function askModel(url: string, apiKey: string, model: string, prompt: string, js
   });
 }
 
-// 降级模式仍使用旧的系统提示词，避免引用已删除的 model-prompt。
-const legacySystemPrompt = `你是乘用车底盘悬架工程师，帮同事把一句创新方向写成两页内部讨论稿。只输出一个 JSON 对象，不要 Markdown。
+const legacySystemPrompt = `你是乘用车底盘悬架工程师，帮同事把一句创新方向写成完整提案。只输出一个 JSON 对象，不要 Markdown。
 只写悬架，不写电池、电驱、热管理、控制算法；不要编造实测值、专利号和授权结论；必要结构写 3 到 4 条，恰好两种做法，每条 difference 含"相对"。
-JSON 形状：{"title":"","axle":"后悬架","problemTitle":"","baseline":"","onlyThis":"","features":[{"id":"F1","text":""}],"embodiments":[{"name":"","structure":"","difference":""},{"name":"","structure":"","difference":""}],"setup":"","criterion":"","claim":"","riskReason":""}`;
+JSON 形状：{"title":"","axle":"后悬架","summary":"","problemTitle":"","baseline":"","innovations":[{"id":"I1","point":"","distinction":""}],"onlyThis":"","features":[{"id":"F1","text":""}],"implementation":{"material":"","machining":"","assembly":"","tolerance":""},"embodiments":[{"name":"","structure":"","difference":""},{"name":"","structure":"","difference":""}],"claimChart":[{"feature":"","ours":"","match":""}],"riskLevel":"","designAround":[{"risk":"","alternative":"","claimChange":""}],"benefits":{"performance":"","cost":"","platform":"","patent":""},"setup":"","criterion":"","claim":"","risks":"","disclaimer":"","riskReason":""}`;
 
 function readContent(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "";
@@ -154,3 +157,4 @@ function stripFence(value: string) {
 function jsonError(error: string, status: number) {
   return Response.json({ error }, { status });
 }
+

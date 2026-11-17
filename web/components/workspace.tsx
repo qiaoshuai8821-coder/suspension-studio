@@ -71,7 +71,7 @@ export function Workspace() {
     setTitle("");
     setBaseline("");
     setBody("");
-    setSaved(`已记下「${next.title}」。下一步到第二步，写成两页。`);
+    setSaved(`已记下「${next.title}」。下一步到第二步，写成五页提案。`);
   }
 
   function rememberLlm(nextProvider: ProviderId, nextKey: string) {
@@ -149,7 +149,7 @@ export function Workspace() {
           <Mark />
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">悬架创新工作台</h1>
-            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">按车型、零件和方向，写成两页结构讨论稿。密钥只留在这台浏览器里。</p>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">按车型、零件和方向，写成五页完整提案。密钥只留在这台浏览器里。</p>
           </div>
         </div>
         <ol className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-border bg-card/80 px-3 py-3 sm:px-5">
@@ -160,7 +160,7 @@ export function Workspace() {
             <ChevronRight className="size-4" />
           </li>
           <li>
-            <StepLink href="#slides" index="02" title="写成两页" detail="再生成讨论稿" accent />
+            <StepLink href="#slides" index="02" title="写成五页" detail="再生成提案" accent />
           </li>
         </ol>
       </header>
@@ -285,7 +285,7 @@ export function Workspace() {
 
         <Card id="slides" className="scroll-mt-4">
           <CardHeader className="border-b border-border pb-4">
-            <StepHeading index="02" icon={<FileText className="size-4" />} title="写成两页" detail="写清哪款车、哪个零件或系统、想往哪个方向改。这一步才是生成。" accent />
+            <StepHeading index="02" icon={<FileText className="size-4" />} title="写成五页" detail="写清哪款车、哪个零件或系统、想往哪个方向改。这一步才是生成。" accent />
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-[9.5rem_minmax(0,1fr)]">
@@ -332,7 +332,7 @@ export function Workspace() {
             </div>
             <Textarea value={prompt} maxLength={2000} onChange={(event) => setPrompt(event.target.value)} placeholder="例如：后驱轿车，后悬下控制臂内点。轮跳末端的冲击不要再进衬套，想在缓冲块压实之后另开一条进纵梁的传力路径。车身安装孔不动。" className="min-h-36 sm:min-h-40" />
             <Button type="button" variant="emphasis" className="h-11 w-full px-4 text-base font-semibold" disabled={busy !== null} onClick={() => void generate(prompt)}>
-              {busy === "generate" ? (apiKey.trim() ? "正在让模型写这两页…" : "正在整理这两页…") : "生成两页幻灯片"}
+              {busy === "generate" ? (apiKey.trim() ? "正在让模型写这五页…" : "正在整理这五页…") : "生成五页提案"}
             </Button>
 
             {busy === "generate" ? (
@@ -347,7 +347,7 @@ export function Workspace() {
 
             {latest ? (
               <div className="rounded-lg border border-success/30 bg-success/10 px-3 py-3">
-                <p className="font-mono text-[11px] font-medium tracking-wide text-success">已写成两页</p>
+                <p className="font-mono text-[11px] font-medium tracking-wide text-success">已写成五页</p>
                 <p className="mt-1 break-words text-base font-semibold">{latest.title}</p>
                 <ul className="mt-2 space-y-1 text-sm leading-6">
                   {latest.features.map((feature) => (
@@ -373,7 +373,7 @@ export function Workspace() {
             <section className="flex flex-col gap-2">
               <SectionLabel>已经生成的</SectionLabel>
               {decks.length === 0 ? (
-                <EmptyState title="这台浏览器里还没有幻灯片" body="生成过的两页会留在这里，刷新也还在。" />
+                <EmptyState title="这台浏览器里还没有幻灯片" body="生成过的五页会留在这里，刷新也还在。" />
               ) : (
                 decks.map((deck) => (
                   <button
@@ -399,7 +399,7 @@ export function Workspace() {
           </Button>
           <Button type="button" variant="emphasis" className="h-11" onClick={() => document.getElementById("slides")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
             <span className="font-mono text-xs tabular-nums">02</span>
-            写成两页
+            写成五页
           </Button>
         </div>
       </nav>
