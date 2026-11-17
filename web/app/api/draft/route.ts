@@ -1,6 +1,7 @@
 import { acceptModelDraft } from "@/lib/draft";
-import { modelSystemPrompt } from "@/lib/model-prompt";
 import { isProviderId, providers } from "@/lib/providers";
+
+import { AgentError, runAgent } from "@/lib/agent/runtime";
 
 export const maxDuration = 60;
 
@@ -27,11 +28,61 @@ export async function POST(request: Request) {
   }
 
   const provider = providers[providerId];
+
+  // 首选：运行 Agent（规划 + 工具调用 + 成稿）。
+  try {
+    const result = await runAgent({
+      url: provider.url,
+      model: provider.model,
+      apiKey,
+      prompt,
+    });
+
+    const parsed = parseJsonText(result.content);
+    if (parsed === null) {
+      // Agent 成稿无法解析，降级到单次模式兜底。
+      return await legacySingleShot(provider.url, provider.model, apiKey, prompt);
+    }
+
+    const accepted = acceptModelDraft(parsed);
+    if (!accepted.ok) {
+      return await legacySingleShot(provider.url, provider.model, apiKey, prompt);
+    }
+    // trace 一并返回，当前前端可忽略；后续可用于展示 Agent 执行轨迹。
+    return Response.json({ draft: accepted.draft, source: "agent", trace: result.trace });
+  } catch (error) {
+    if (error instanceof AgentError) {
+      // 400 表示当前模型不支持工具参数，降级到旧的单次调用，保证可用性。
+      if (error.status === 400) {
+        return await legacySingleShot(provider.url, provider.model, apiKey, prompt);
+      }
+      return jsonError(error.message, error.status);
+    }
+    return jsonError("模型没有写完。请再生成一次。", 502);
+  }
+}
+
+// 把 Agent 成稿文本安全解析为 unknown。
+function parseJsonText(content: string): unknown | null {
+  try {
+    return JSON.parse(stripFence(content));
+  } catch {
+    return null;
+  }
+}
+
+// 降级路径：保留改造前的单次 JSON 模式调用行为。
+async function legacySingleShot(
+  url: string,
+  model: string,
+  apiKey: string,
+  prompt: string,
+): Promise<Response> {
   let response: Response;
   try {
-    response = await askModel(provider.url, apiKey, provider.model, prompt, true);
+    response = await askModel(url, apiKey, model, prompt, true);
     if (response.status === 400) {
-      response = await askModel(provider.url, apiKey, provider.model, prompt, false);
+      response = await askModel(url, apiKey, model, prompt, false);
     }
   } catch {
     return jsonError("模型没有连上。请检查网络后再试。", 502);
@@ -75,13 +126,18 @@ function askModel(url: string, apiKey: string, model: string, prompt: string, js
       temperature: 0.4,
       ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
       messages: [
-        { role: "system", content: modelSystemPrompt },
+        { role: "system", content: legacySystemPrompt },
         { role: "user", content: prompt },
       ],
     }),
     signal: AbortSignal.timeout(25_000),
   });
 }
+
+// 降级模式仍使用旧的系统提示词，避免引用已删除的 model-prompt。
+const legacySystemPrompt = `你是乘用车底盘悬架工程师，帮同事把一句创新方向写成两页内部讨论稿。只输出一个 JSON 对象，不要 Markdown。
+只写悬架，不写电池、电驱、热管理、控制算法；不要编造实测值、专利号和授权结论；必要结构写 3 到 4 条，恰好两种做法，每条 difference 含"相对"。
+JSON 形状：{"title":"","axle":"后悬架","problemTitle":"","baseline":"","onlyThis":"","features":[{"id":"F1","text":""}],"embodiments":[{"name":"","structure":"","difference":""},{"name":"","structure":"","difference":""}],"setup":"","criterion":"","claim":"","riskReason":""}`;
 
 function readContent(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "";
